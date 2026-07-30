@@ -1,0 +1,9 @@
+- [ ] Redesign `DetectedVideosPanel` to match reference image (High Fidelity UI)
+    - [ ] Add domain toggle with Switch
+    - [ ] Update `VideoCard` with larger thumbnails and focus effects
+- [ ] Implement focus-based navigation for the video panel
+    - [ ] Add `isPanelFocused` state
+    - [ ] Disable virtual cursor when panel is focused
+    - [ ] Handle D-pad navigation between cards
+    - [ ] Add logic to return to "Cursor Mode" (Left arrow)
+- [ ] Verify build and D-pad interaction
