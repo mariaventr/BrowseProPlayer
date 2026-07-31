@@ -87,6 +87,7 @@ fun VideoPlayerScreen(videoUrl: String) {
         ExoPlayer.Builder(context)
             .setSeekBackIncrementMs(10000)
             .setSeekForwardIncrementMs(10000)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .build().apply {
             setMediaItem(MediaItem.fromUri(videoUrl))
             playWhenReady = true
@@ -206,6 +207,7 @@ fun VideoPlayerScreen(videoUrl: String) {
             },
             update = { view -> 
                 view.resizeMode = resizeModes[resizeModeIndex]
+                view.keepScreenOn = isPlaying
             }
         )
 
