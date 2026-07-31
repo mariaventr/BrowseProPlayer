@@ -62,6 +62,7 @@ data class DetectedVideo(
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_BrowseProPlayer)
         super.onCreate(savedInstanceState)
         setContent {
             BrowseProPlayerTheme {
