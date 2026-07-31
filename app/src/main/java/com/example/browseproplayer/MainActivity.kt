@@ -31,12 +31,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.*
 import com.example.browseproplayer.ui.theme.BrowseProPlayerTheme
+import androidx.compose.animation.core.*
 
 private val VIDEO_EXTENSIONS = listOf(".mp4", ".m3u8", ".mpd", ".webm", ".mkv", ".ts")
 
@@ -82,6 +86,30 @@ fun MainApp() {
     BrowserScreen(initialUrl = "https://www.playhubmax.com/")
 }
 
+@Composable
+fun LoadingSpinner(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "loading")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    Canvas(modifier = modifier.size(48.dp).rotate(rotation)) {
+        drawArc(
+            color = Color.White,
+            startAngle = 0f,
+            sweepAngle = 270f,
+            useCenter = false,
+            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+        )
+    }
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -98,9 +126,11 @@ fun BrowserScreen(initialUrl: String) {
 
     var showOverlay by remember { mutableStateOf(false) }
     var isSidePanelFocused by remember { mutableStateOf(false) }
+    var isPageLoading by remember { mutableStateOf(true) }
 
     val webView = remember {
         WebView(context).apply {
+            setBackgroundColor(android.graphics.Color.BLACK)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
@@ -125,6 +155,7 @@ fun BrowserScreen(initialUrl: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.Black)
             .focusRequester(focusRequester)
             .focusable()
             .onKeyEvent { keyEvent ->
@@ -187,7 +218,7 @@ fun BrowserScreen(initialUrl: String) {
     ) {
         // Main Web Content
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().background(Color.Black),
             factory = {
                 webView.apply {
                     webViewClient = object : WebViewClient() {
@@ -211,6 +242,7 @@ fun BrowserScreen(initialUrl: String) {
                         }
                         override fun onPageFinished(view: WebView, url: String?) {
                             urlText = url ?: ""
+                            isPageLoading = false
                         }
                     }
                 }
@@ -255,7 +287,7 @@ fun BrowserScreen(initialUrl: String) {
         }
 
         // The Cursor
-        if (!showOverlay && !isSidePanelFocused) {
+        if (!showOverlay && !isSidePanelFocused && !isPageLoading) {
             Icon(
                 imageVector = Icons.Default.Navigation,
                 contentDescription = null,
@@ -264,6 +296,16 @@ fun BrowserScreen(initialUrl: String) {
                     .size(24.dp),
                 tint = Color.White
             )
+        }
+
+        // Loading Spinner
+        if (isPageLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                LoadingSpinner()
+            }
         }
     }
 }
