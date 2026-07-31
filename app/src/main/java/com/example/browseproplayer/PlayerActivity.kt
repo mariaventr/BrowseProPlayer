@@ -10,9 +10,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -32,6 +30,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -50,10 +49,13 @@ import androidx.tv.material3.*
 import com.example.browseproplayer.ui.theme.BrowseProPlayerTheme
 import kotlinx.coroutines.delay
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 const val EXTRA_VIDEO_URL = "extra_video_url"
 
 class PlayerActivity : ComponentActivity() {
+    @UnstableApi
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,7 +67,10 @@ class PlayerActivity : ComponentActivity() {
         }
         setContent {
             BrowseProPlayerTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = RectangleShape
+                ) {
                     VideoPlayerScreen(videoUrl = videoUrl)
                 }
             }
@@ -73,7 +78,8 @@ class PlayerActivity : ComponentActivity() {
     }
 }
 
-@OptIn(UnstableApi::class, ExperimentalTvMaterial3Api::class)
+@UnstableApi
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun VideoPlayerScreen(videoUrl: String) {
     val context = LocalContext.current
@@ -137,7 +143,7 @@ fun VideoPlayerScreen(videoUrl: String) {
 
     // Force play on mount
     LaunchedEffect(Unit) {
-        delay(1000)
+        delay(1.seconds)
         player.play()
     }
 
@@ -146,7 +152,7 @@ fun VideoPlayerScreen(videoUrl: String) {
         while (true) {
             contentPosition = player.currentPosition
             bufferedPosition = player.bufferedPosition
-            delay(500)
+            delay(500.milliseconds)
         }
     }
 
@@ -154,7 +160,7 @@ fun VideoPlayerScreen(videoUrl: String) {
     LaunchedEffect(lastInteractionTime, isPlaying) {
         if (isPlaying) { // Only auto-hide if playing
             while (true) {
-                delay(1000)
+                delay(1.seconds)
                 if (isControllerVisible && System.currentTimeMillis() - lastInteractionTime >= 5000) {
                     isControllerVisible = false
                 }
@@ -416,7 +422,7 @@ private fun formatTime(ms: Long): String {
     }
 }
 
-@OptIn(UnstableApi::class)
+@UnstableApi
 private fun showTrackSelectionDialog(
     context: android.content.Context,
     player: ExoPlayer,
