@@ -1,31 +1,44 @@
-# Implementation Plan - Replace Logo with Loading Spinner and Fix White Flash
+# Implementation Plan - Fix "Browser Cracked" and "Long Error" UI Issues
 
-Remove the splash logo, add an animated loading spinner, and eliminate the white flicker that occurs while the WebView is initializing.
+Improve WebView stability and error handling to prevent renderer crashes and "unresponsive" error states.
+
+## User Review Required
+
+> [!IMPORTANT]
+> The "browser cracked" error likely stems from the WebView's rendering process crashing or being detected as a bot by the website. We will implement robust error handling and mimic a standard browser to avoid this.
 
 ## Proposed Changes
 
-### Resources
-
-#### [MODIFY] [splash_background.xml](file:///C:/Users/maria/AndroidStudioProjects/BrowseProPlayer/app/src/main/res/drawable/splash_background.xml)
-- Remove the `<item>` with the bitmap logo. Keep only the black background for a seamless transition.
+### Dependencies
+- Add `androidx.webkit:webkit:1.12.0` to `libs.versions.toml` and `app/build.gradle.kts`.
 
 ### Main Activity
 
 #### [MODIFY] [MainActivity.kt](file:///C:/Users/maria/AndroidStudioProjects/BrowseProPlayer/app/src/main/java/com/example/browseproplayer/MainActivity.kt)
-- **WebView Initialization**:
-    - Set `webView.setBackgroundColor(android.graphics.Color.BLACK)` to prevent the default white rendering before content loads.
-- **Loading State**:
-    - Add `var isPageLoading by remember { mutableStateOf(true) }`.
-    - Update `WebViewClient` to set `isPageLoading = false` in `onPageFinished`.
-- **UI Structure**:
-    - Wrap the `AndroidView` in a `Box` with a `background(Color.Black)`.
-    - Add a `CircularProgressIndicator` (the "rueda") centered in the `Box`, visible only when `isPageLoading` is true.
-    - Use `AnimatedVisibility` or simple `if` to transition between the spinner and the WebView content if needed, though keeping the WebView visible behind the spinner is usually smoother.
+- **WebView Setup**:
+    - Set a standard Chrome User-Agent.
+    - Enable `databaseEnabled` and `javaScriptCanOpenWindowsAutomatically`.
+- **WebViewClient Improvements**:
+    - Implement `onRenderProcessGone` to handle renderer crashes by reloading the page.
+    - Implement `onReceivedError` to show a user-friendly message instead of the default error page.
+    - Implement `onReceivedHttpError` for better error tracking.
+- **Video Detection Panel**:
+    - Improve title extraction logic to truncate long names and provide fallback titles.
+    - Add a "Clear" button to the panel to allow users to dismiss it.
+
+### Player Activity
+
+#### [MODIFY] [PlayerActivity.kt](file:///C:/Users/maria/AndroidStudioProjects/BrowseProPlayer/app/src/main/java/com/example/browseproplayer/PlayerActivity.kt)
+- **Error Handling**: Truncate long error messages in the `Toast` to avoid UI clutter.
 
 ## Verification Plan
 
+### Automated Tests
+- Build the project: `gradle_build(":app:assembleDebug")`.
+- Analyze files for syntax errors: `analyze_file`.
+
 ### Manual Verification
-1.  **Cold Start**: Force stop and launch the app.
-2.  **Transition**: Verify the screen goes from Black (Splash) -> Black with Spinner -> Website.
-3.  **No White Flash**: Confirm there is zero white flicker during the entire process.
-4.  **Completion**: Ensure the spinner disappears exactly when the website content becomes visible.
+- Launch the app and browse to `https://www.playhubmax.com/`.
+- Verify that the "browser cracked" error no longer appears (or is handled gracefully).
+- Verify that if a network error occurs, a short and friendly message is displayed.
+- Verify the video detection panel works as expected with various video URLs.

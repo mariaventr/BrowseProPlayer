@@ -12,6 +12,9 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceError
+import android.webkit.RenderProcessGoneDetail
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
@@ -134,6 +137,7 @@ fun BrowserScreen(initialUrl: String) {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
+            settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
             isFocusable = false
             isFocusableInTouchMode = false
             loadUrl(initialUrl)
@@ -225,8 +229,10 @@ fun BrowserScreen(initialUrl: String) {
                         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                             val requestUrl = request.url.toString()
                             if (esUrlDeVideo(requestUrl)) {
+                                val rawTitle = requestUrl.substringAfterLast("/").substringBefore("?")
+                                val cleanTitle = if (rawTitle.length > 30) rawTitle.take(27) + "..." else if (rawTitle.isBlank()) "Video Detectado" else rawTitle
                                 val video = DetectedVideo(
-                                    title = requestUrl.substringAfterLast("/").substringBefore("?"),
+                                    title = cleanTitle,
                                     url = requestUrl,
                                     type = requestUrl.substringAfterLast(".").uppercase()
                                 )
@@ -243,6 +249,32 @@ fun BrowserScreen(initialUrl: String) {
                         override fun onPageFinished(view: WebView, url: String?) {
                             urlText = url ?: ""
                             isPageLoading = false
+                        }
+
+                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                            super.onReceivedError(view, request, error)
+                            if (request?.isForMainFrame == true) {
+                                view?.post {
+                                    Toast.makeText(context, "Error al cargar página: ${error?.description ?: "Desconocido"}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+
+                        override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+                            val didCrash = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                detail?.didCrash() == true
+                            } else {
+                                true // Fallback to true if we can't check
+                            }
+                            
+                            if (didCrash) {
+                                view?.post {
+                                    Toast.makeText(context, "El navegador falló. Recargando...", Toast.LENGTH_SHORT).show()
+                                    view.reload()
+                                }
+                                return true
+                            }
+                            return false
                         }
                     }
                 }
@@ -262,7 +294,8 @@ fun BrowserScreen(initialUrl: String) {
                 DetectedVideosPanel(
                     videos = detectedVideos,
                     domain = urlText.substringAfter("://").substringBefore("/"),
-                    onVideoClick = { launchPlayer(context, it.url) }
+                    onVideoClick = { launchPlayer(context, it.url) },
+                    onClear = { detectedVideos.clear() }
                 )
             }
         }
@@ -440,7 +473,12 @@ fun ControlIcon(icon: ImageVector, label: String, onClick: () -> Unit = {}) {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun DetectedVideosPanel(videos: List<DetectedVideo>, domain: String, onVideoClick: (DetectedVideo) -> Unit) {
+fun DetectedVideosPanel(
+    videos: List<DetectedVideo>, 
+    domain: String, 
+    onVideoClick: (DetectedVideo) -> Unit,
+    onClear: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -450,15 +488,25 @@ fun DetectedVideosPanel(videos: List<DetectedVideo>, domain: String, onVideoClic
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFF2962FF)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.PlayCircle, null, tint = Color.White, modifier = Modifier.size(24.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFF2962FF)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.PlayCircle, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Videos Detectados", style = MaterialTheme.typography.titleLarge, color = Color.White)
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text("Detected Videos", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                
+                IconButton(onClick = onClear) {
+                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))

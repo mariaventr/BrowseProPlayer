@@ -132,7 +132,9 @@ fun VideoPlayerScreen(videoUrl: String) {
                 }
             }
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                Toast.makeText(context, "Error de reproducción: ${error.message}", Toast.LENGTH_LONG).show()
+                val fullMsg = error.message ?: "Desconocido"
+                val displayMsg = if (fullMsg.length > 100) fullMsg.take(97) + "..." else fullMsg
+                Toast.makeText(context, "Error de reproducción: $displayMsg", Toast.LENGTH_LONG).show()
             }
         }
         player.addListener(listener)
