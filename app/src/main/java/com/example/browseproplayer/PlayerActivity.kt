@@ -37,6 +37,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -91,6 +94,7 @@ fun VideoPlayerScreen(videoUrl: String) {
             .build().apply {
             setMediaItem(MediaItem.fromUri(videoUrl))
             playWhenReady = true
+            setHandleAudioBecomingNoisy(true)
             prepare()
             play()
         }
@@ -115,6 +119,28 @@ fun VideoPlayerScreen(videoUrl: String) {
 
     val focusRequester = remember { FocusRequester() }
     val rootFocusRequester = remember { FocusRequester() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    player.pause()
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    player.stop()
+                }
+                Lifecycle.Event.ON_START -> {
+                    if (player.playbackState == Player.STATE_IDLE) player.prepare()
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     DisposableEffect(Unit) {
         val listener = object : Player.Listener {
@@ -132,9 +158,11 @@ fun VideoPlayerScreen(videoUrl: String) {
                 }
             }
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                val fullMsg = error.message ?: "Desconocido"
-                val displayMsg = if (fullMsg.length > 100) fullMsg.take(97) + "..." else fullMsg
-                Toast.makeText(context, "Error de reproducción: $displayMsg", Toast.LENGTH_LONG).show()
+                if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                    val fullMsg = error.message ?: "Desconocido"
+                    val displayMsg = if (fullMsg.length > 100) fullMsg.take(97) + "..." else fullMsg
+                    Toast.makeText(context, "Error de reproducción: $displayMsg", Toast.LENGTH_LONG).show()
+                }
             }
         }
         player.addListener(listener)

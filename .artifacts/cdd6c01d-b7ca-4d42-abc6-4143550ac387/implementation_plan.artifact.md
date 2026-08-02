@@ -1,44 +1,36 @@
-# Implementation Plan - Fix "Browser Cracked" and "Long Error" UI Issues
+# Implementation Plan - Fix Cuevana Redirects and Refine AdBlocker
 
-Improve WebView stability and error handling to prevent renderer crashes and "unresponsive" error states.
+Address the redirection issue on `cuevana3i.you` by refining the pop-up blocking and script filtering logic.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> The "browser cracked" error likely stems from the WebView's rendering process crashing or being detected as a bot by the website. We will implement robust error handling and mimic a standard browser to avoid this.
+> The redirection to the home page occurs because the website detects that its attempts to open a pop-up window were blocked. I will change the blocker to "silent mode" to trick the website into thinking the pop-up was successful, while still preventing the ad from appearing.
 
 ## Proposed Changes
-
-### Dependencies
-- Add `androidx.webkit:webkit:1.12.0` to `libs.versions.toml` and `app/build.gradle.kts`.
 
 ### Main Activity
 
 #### [MODIFY] [MainActivity.kt](file:///C:/Users/maria/AndroidStudioProjects/BrowseProPlayer/app/src/main/java/com/example/browseproplayer/MainActivity.kt)
-- **WebView Setup**:
-    - Set a standard Chrome User-Agent.
-    - Enable `databaseEnabled` and `javaScriptCanOpenWindowsAutomatically`.
-- **WebViewClient Improvements**:
-    - Implement `onRenderProcessGone` to handle renderer crashes by reloading the page.
-    - Implement `onReceivedError` to show a user-friendly message instead of the default error page.
-    - Implement `onReceivedHttpError` for better error tracking.
-- **Video Detection Panel**:
-    - Improve title extraction logic to truncate long names and provide fallback titles.
-    - Add a "Clear" button to the panel to allow users to dismiss it.
-
-### Player Activity
-
-#### [MODIFY] [PlayerActivity.kt](file:///C:/Users/maria/AndroidStudioProjects/BrowseProPlayer/app/src/main/java/com/example/browseproplayer/PlayerActivity.kt)
-- **Error Handling**: Truncate long error messages in the `Toast` to avoid UI clutter.
+- **WebChromeClient Improvement**:
+    - Update `onCreateWindow` to return `true` instead of `false`.
+    - This tells the browser engine that we "handled" the new window request, so it doesn't trigger error fallbacks on the page, but since we don't actually create a new WebView, nothing happens on screen.
+- **WebViewClient Refinement**:
+    - **Safe-list Main Domain**: Update `shouldInterceptRequest` to explicitly **allow** all requests originating from the main site's domain (e.g., if it contains `cuevana3i.you`), even if the path contains "ads" or "pop".
+    - **Refined Script Filter**: Only block scripts containing "ads" or "pop" if they are coming from a different domain than the current page.
+    - **URL Navigation Interception**: Implement `shouldOverrideUrlLoading` to ensure that any redirect happening in the main frame that leads to a known ad domain is blocked before it replaces the current page.
+- **Improved Ad-Hiding**:
+    - Enhance the JavaScript injection to run every second for a short period after the page loads, catching ads that are inserted late by dynamic scripts.
 
 ## Verification Plan
 
 ### Automated Tests
-- Build the project: `gradle_build(":app:assembleDebug")`.
-- Analyze files for syntax errors: `analyze_file`.
+- `gradle_build(":app:assembleDebug")`.
+- `analyze_file`.
 
 ### Manual Verification
-- Launch the app and browse to `https://www.playhubmax.com/`.
-- Verify that the "browser cracked" error no longer appears (or is handled gracefully).
-- Verify that if a network error occurs, a short and friendly message is displayed.
-- Verify the video detection panel works as expected with various video URLs.
+- Go to `https://cuevana3i.you/`.
+- Click on a server selection button.
+- Verify that the page stays on the movie/server selection and DOES NOT redirect to the home page.
+- Confirm that no ad pop-ups are visible.
+- Verify that the video is still detected and can be played.
